@@ -16,3 +16,6 @@ data/
 
 # 模型輸出
 outputs/
+
+#官方文件
+official/
