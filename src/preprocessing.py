@@ -27,18 +27,22 @@ def is_valid_ip(ip_hash: Optional[str]) -> bool:
     return ip_hash and ip_hash not in INVALID_IP_HASHES
 
 def parse_date(date_str: str) -> datetime:
-    """解析日期字串"""
+    """解析日期字串（轉換為 GMT+8 台北時區）"""
     try:
         if ':' in date_str:
-            return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            # 解析 UTC 時間並轉換為 GMT+8
+            dt_utc = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            return dt_utc + timedelta(hours=8)
         return datetime.strptime(date_str, '%Y-%m-%d')
     except:
         return datetime(2025, 1, 1)
 
 def parse_hour(created_at: str) -> int:
-    """解析小時"""
+    """解析小時（GMT+8 台北時區）"""
     try:
-        return int(created_at[11:13])
+        # 解析完整時間並轉換為 GMT+8
+        dt = parse_date(created_at)
+        return dt.hour
     except:
         return 12
 
@@ -106,6 +110,9 @@ def get_concentration(amounts: List[float]) -> float:
 
 if __name__ == "__main__":
     # 測試資料載入
-    base_dir = 'D:/lxh/github/a4t-project'
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from config import get_data_dir
+    base_dir = get_data_dir()
     train_labels, user_info, twd_txs, crypto_txs, trading_txs, swap_txs = load_data(base_dir)
     print("\n資料載入成功！")

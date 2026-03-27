@@ -329,6 +329,10 @@ results = {
     'mean_f1': mean_f1,
     'overall_pr_auc': overall_pr,
     'overall_roc_auc': overall_roc,
+    'model_state_dict': model.state_dict(),   # last fold model weights (for ExplainerService)
+    'scaler': scaler,                          # last fold StandardScaler (for ExplainerService)
+    'edge_index': edge_index.cpu(),            # graph edge_index on CPU (for ExplainerService)
+    'X_scaled': X_scaled,                      # last fold full scaled feature matrix, shape: (n_users, n_features)
 }
 
 output_path = str(Path(OUTPUT_DIR) / 'graphsage_v13_results.pkl')
