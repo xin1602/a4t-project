@@ -56,8 +56,6 @@
 **觸發點**：每日 00:00 排程或手動觸發
 
 資料來源：直接從 BitoPro 官方 API 抓取
-- Swagger UI：https://aws-event-docs.bitopro.com/
-- API 端點：https://aws-event-api.bitopro.com/
 - 預測目標：`predict_label.jsonl` 中的 user_id 清單（無標籤，需模型推論）
 
 1. 系統透過 API 自動拉取當日新增用戶的交易記錄（`twd_transfer`、`crypto_transfer`、`usdt_twd_trading`、`usdt_swap`）
@@ -494,9 +492,8 @@ LLM 使用 **Amazon Bedrock**，透過 AWS SDK（`boto3`）呼叫，無需管理
 
 ### 5.2 批次預測流程
 
-資料來源：BitoPro 官方 API（https://aws-event-api.bitopro.com/）
+資料來源：BitoPro 官方 API
 - 預測目標清單：`predict_label.jsonl`（僅含 user_id，無標籤）
-- Swagger 文件：https://aws-event-docs.bitopro.com/
 
 ```
 API 拉取新用戶交易資料
@@ -582,7 +579,7 @@ API 拉取新用戶交易資料
 **操作**：進入「即時預測 > 批次預測」
 
 **說明重點**：
-1. 「系統直接串接 BitoPro 官方 API（https://aws-event-api.bitopro.com/），自動拉取 `predict_label.jsonl` 中的待預測用戶交易資料，不需要手動匯出 CSV」
+1. 「系統直接串接 BitoPro 官方 API，自動拉取 `predict_label.jsonl` 中的待預測用戶交易資料，不需要手動匯出 CSV」
 2. 點擊「立即執行批次預測」，系統開始拉取資料並推論
 3. 「約 30 秒後，右上角出現通知，高風險用戶自動進入案件管理列表」
 4. 切換到「單筆預測」分頁，貼上一筆預先準備好的新用戶 JSON 資料

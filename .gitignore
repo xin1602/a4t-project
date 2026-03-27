@@ -11,6 +11,10 @@ __pycache__/
 # 本地設定（含敏感路徑）
 config/settings_local.py
 
+# AWS credentials（絕對不可上傳）
+.aws/
+aws_credentials.sh
+
 # 資料檔案（不上傳原始資料）
 data/
 
@@ -19,3 +23,22 @@ outputs/
 
 #官方文件
 official/
+
+# 前端
+node_modules/
+
+# SSH keys
+deploy/a4t-key
+deploy/a4t-key.pub
+
+# 架構圖
+generated-diagrams
+
+# 部署腳本（含 SSH 金鑰與 AWS 資源 ID）
+deploy/
+
+# 文件
+docs
+
+# 腳本
+scripts/
