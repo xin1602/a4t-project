@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply m-0 bg-surface-50 font-sans text-slate-700;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-200; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-300; }
+}
+
+/* ── Components ── */
+@layer components {
+  .card {
+    @apply rounded-xl border border-surface-200 bg-white p-5 shadow-card transition-shadow duration-200;
+  }
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+  .card-title {
+    @apply mb-3 text-sm font-semibold text-slate-600;
+  }
+
+  .badge       { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+  .badge-red   { @apply bg-red-50 text-red-700; }
+  .badge-orange{ @apply bg-orange-50 text-orange-700; }
+  .badge-yellow{ @apply bg-amber-50 text-amber-700; }
+  .badge-green { @apply bg-emerald-50 text-emerald-700; }
+  .badge-gray  { @apply bg-slate-100 text-slate-600; }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-brand-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition-all duration-150 hover:bg-surface-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border border-surface-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm transition-colors duration-150 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20;
+  }
+
+  .table-header   { @apply border-b border-surface-200 bg-surface-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500; }
+  .table-cell     { @apply border-b border-surface-100 px-4 py-3 text-sm text-slate-600; }
+  .table-row-hover{ @apply cursor-pointer transition-colors duration-100 hover:bg-brand-50/40; }
+
+  .llm-markdown h1       { @apply mt-4 mb-2 text-lg font-bold text-slate-800; }
+  .llm-markdown h2       { @apply mt-3 mb-1.5 text-base font-semibold text-slate-800; }
+  .llm-markdown h3       { @apply mt-3 mb-1 text-sm font-semibold text-slate-800; }
+  .llm-markdown p        { @apply my-1.5 leading-relaxed; }
+  .llm-markdown ul,
+  .llm-markdown ol       { @apply my-1.5 pl-5; }
+  .llm-markdown li       { @apply my-1; }
+  .llm-markdown strong   { @apply text-slate-800; }
+  .llm-markdown code     { @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-brand-600; }
+  .llm-markdown blockquote { @apply my-2 border-l-2 border-brand-200 pl-3 text-slate-500 italic; }
+  .llm-markdown hr       { @apply my-3 border-surface-200; }
+}
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin-slow {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Override react-force-graph tooltip container */
+.graph-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
