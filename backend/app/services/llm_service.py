@@ -1,5 +1,5 @@
 """
-LlmService — Amazon Bedrock Claude 3.5 Sonnet, SSE streaming output.
+LlmService — OpenRouter API (OpenAI-compatible), SSE streaming output.
 
 Provides two streaming modes:
   - internal_investigation: Internal fraud investigation advisory for analysts
@@ -8,17 +8,22 @@ Provides two streaming modes:
 IMPORTANT: This service is for INTERNAL USE ONLY.
   - Does NOT make final account freeze decisions
   - Does NOT fabricate data
+
+Configuration (environment variables):
+  OPENROUTER_API_KEY  — required
+  OPENROUTER_MODEL    — optional, default: anthropic/claude-3.5-sonnet
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import boto3
+import httpx
 from fastapi import HTTPException
 
 from backend.app.services.graph_service import SubgraphData
@@ -26,13 +31,12 @@ from backend.app.services.graph_service import SubgraphData
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Bedrock configuration
+# OpenRouter configuration
 # ---------------------------------------------------------------------------
 
-_BEDROCK_REGION = "us-west-2"
-_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+_OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+_DEFAULT_MODEL = "anthropic/claude-3.5-sonnet"
 _MAX_TOKENS = 2048
-_ANTHROPIC_VERSION = "bedrock-2023-05-31"
 
 # ---------------------------------------------------------------------------
 # System prompts
@@ -182,104 +186,123 @@ class InternalInvestigationContext:
 
 class LlmService:
     """
-    Amazon Bedrock Claude 3.5 Sonnet, SSE streaming output.
+    OpenRouter API (OpenAI-compatible), SSE streaming output.
 
     Supports two context modes:
       - internal_investigation: Fraud investigation advisory
       - graph_cluster: Graph cluster summary
+
+    Requires environment variable:
+      OPENROUTER_API_KEY
     """
 
     CONTEXT_MODES = ["internal_investigation", "graph_cluster"]
 
     def __init__(self) -> None:
-        self._client: Optional[Any] = None
-        self._last_request_time: float = 0.0  # Bedrock rate limit: 1 RPS
+        self._last_request_time: float = 0.0
 
-    def _get_client(self) -> Any:
-        """Lazily initialize the Bedrock Runtime client."""
-        if self._client is None:
-            self._client = boto3.client(
-                "bedrock-runtime",
-                region_name=_BEDROCK_REGION,
+    def _get_api_key(self) -> str:
+        """Read API key from environment variable."""
+        api_key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM service unavailable: OPENROUTER_API_KEY not set",
             )
-        return self._client
+        return api_key
 
-    def _build_request_body(self, system_prompt: str, user_content: str) -> str:
-        """Build the Anthropic Messages API request body as a JSON string."""
-        payload = {
-            "anthropic_version": _ANTHROPIC_VERSION,
-            "max_tokens": _MAX_TOKENS,
-            "system": system_prompt,
-            "messages": [
-                {"role": "user", "content": user_content},
-            ],
-        }
-        return json.dumps(payload, ensure_ascii=False)
+    def _get_model(self) -> str:
+        """Read model name from environment variable, fallback to default."""
+        return os.environ.get("OPENROUTER_MODEL", _DEFAULT_MODEL)
 
-    async def _stream_from_bedrock(
+    async def _stream_from_openrouter(
         self,
         system_prompt: str,
         user_content: str,
     ) -> AsyncGenerator[str, None]:
         """
-        Core streaming logic: invoke Bedrock and yield text delta chunks.
+        Core streaming logic: call OpenRouter and yield text delta chunks.
 
-        Enforces 1 RPS rate limit per hackathon Bedrock constraints.
+        Uses OpenAI-compatible /chat/completions endpoint with stream=True.
 
         Raises:
-            HTTPException(503): on Bedrock timeout or failure.
+            HTTPException(503): on connection failure or API error.
         """
-        # Enforce Bedrock 1 RPS rate limit (hackathon requirement)
+        # Simple rate limiting: 1 RPS
         now = time.monotonic()
         elapsed = now - self._last_request_time
         if elapsed < 1.0:
             await asyncio.sleep(1.0 - elapsed)
         self._last_request_time = time.monotonic()
 
-        client = self._get_client()
-        body = self._build_request_body(system_prompt, user_content)
+        api_key = self._get_api_key()
+        model = self._get_model()
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://a4t-dashboard.local",
+            "X-Title": "A4T Fraud Detection Dashboard",
+        }
+
+        payload = {
+            "model": model,
+            "max_tokens": _MAX_TOKENS,
+            "stream": True,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+        }
 
         try:
-            response = client.invoke_model_with_response_stream(
-                modelId=_MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=body,
-            )
-        except Exception as exc:
-            logger.error("Bedrock invoke failed: %s", exc)
-            raise HTTPException(
-                status_code=503,
-                detail=f"LLM service unavailable: {exc}",
-            ) from exc
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    "POST",
+                    _OPENROUTER_API_URL,
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    if response.status_code != 200:
+                        body = await response.aread()
+                        raise HTTPException(
+                            status_code=503,
+                            detail=f"LLM service unavailable: OpenRouter returned {response.status_code}: {body.decode()}",
+                        )
 
-        try:
-            event_stream = response["body"]
-            for event in event_stream:
-                chunk = event.get("chunk")
-                if chunk is None:
-                    continue
-                raw_bytes = chunk.get("bytes")
-                if not raw_bytes:
-                    continue
-                try:
-                    data = json.loads(raw_bytes)
-                except json.JSONDecodeError:
-                    continue
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]  # strip "data: "
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
 
-                # Extract text delta from Anthropic streaming format
-                delta = data.get("delta", {})
-                text = delta.get("text")
-                if text:
-                    yield text
+                        # Extract text delta from OpenAI streaming format
+                        choices = data.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        text = delta.get("content")
+                        if text:
+                            yield text
 
         except HTTPException:
             raise
-        except Exception as exc:
-            logger.error("Bedrock stream processing failed: %s", exc)
+        except httpx.TimeoutException as exc:
+            logger.error("OpenRouter request timed out: %s", exc)
             raise HTTPException(
                 status_code=503,
-                detail=f"LLM stream error: {exc}",
+                detail="LLM service unavailable: request timed out",
+            ) from exc
+        except Exception as exc:
+            logger.error("OpenRouter request failed: %s", exc)
+            raise HTTPException(
+                status_code=503,
+                detail=f"LLM service unavailable: {exc}",
             ) from exc
 
     async def stream_investigation(
@@ -290,18 +313,12 @@ class LlmService:
         """
         internal_investigation mode — stream fraud investigation advisory.
 
-        Assembles InternalInvestigationContext into JSON and streams
-        Claude's analysis via Bedrock invoke_model_with_response_stream.
-
         Args:
             user_id: The user being investigated.
             context: Pre-assembled investigation context.
 
         Yields:
             Text delta chunks from the LLM.
-
-        Raises:
-            HTTPException(503): on Bedrock failure.
         """
         context_json = json.dumps(context.to_dict(), ensure_ascii=False, indent=2)
         user_content = (
@@ -314,7 +331,7 @@ class LlmService:
             context.prediction.risk_score,
         )
 
-        async for chunk in self._stream_from_bedrock(
+        async for chunk in self._stream_from_openrouter(
             _SYSTEM_PROMPT_INTERNAL_INVESTIGATION, user_content
         ):
             yield chunk
@@ -326,23 +343,15 @@ class LlmService:
         """
         graph_cluster mode — stream graph cluster summary analysis.
 
-        Serializes SubgraphData and streams Claude's cluster analysis
-        via Bedrock invoke_model_with_response_stream.
-
         Args:
             graph_data: Subgraph data containing nodes and edges.
 
         Yields:
             Text delta chunks from the LLM.
-
-        Raises:
-            HTTPException(503): on Bedrock failure.
         """
-        # Build a concise summary of the graph for the LLM
         node_count = len(graph_data.nodes)
         edge_count = len(graph_data.edges)
 
-        # Summarize node risk distribution
         risk_counts: Dict[str, int] = {}
         status_counts: Dict[str, int] = {}
         high_risk_nodes = []
@@ -362,7 +371,6 @@ class LlmService:
                     "graphDegree": node.get("graphDegree", 0),
                 })
 
-        # Identify high-importance edges (edge_mask > 0.3)
         important_edges = [
             e for e in graph_data.edges
             if e.get("edgeMask", 0) > 0.3
@@ -404,7 +412,7 @@ class LlmService:
             len(high_risk_nodes),
         )
 
-        async for chunk in self._stream_from_bedrock(
+        async for chunk in self._stream_from_openrouter(
             _SYSTEM_PROMPT_GRAPH_CLUSTER, user_content
         ):
             yield chunk

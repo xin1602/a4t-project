@@ -25,6 +25,9 @@ hypothesis>=6.80.0
 # AWS Bedrock
 boto3>=1.28.0
 
+# HTTP client (OpenRouter streaming)
+httpx[http2]>=0.27.0
+
 # Utilities
 python-multipart>=0.0.6
 aiofiles>=23.0.0

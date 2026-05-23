@@ -15,6 +15,9 @@ config/settings_local.py
 .aws/
 aws_credentials.sh
 
+# 環境變數（含 API 金鑰，絕對不可上傳）
+.env
+
 # 資料檔案（不上傳原始資料）
 data/
 
@@ -42,3 +45,6 @@ docs
 
 # 腳本
 scripts/
+
+# Local Netlify folder
+.netlify

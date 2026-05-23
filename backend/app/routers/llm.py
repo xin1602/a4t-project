@@ -305,7 +305,7 @@ async def llm_chat(body: ChatRequest) -> StreamingResponse:
         "- 保持簡潔，不要廢話"
     )
 
-    stream = _llm_service._stream_from_bedrock(system_prompt, user_content)
+    stream = _llm_service._stream_from_openrouter(system_prompt, user_content)
 
     return StreamingResponse(
         _sse_generator(stream),
