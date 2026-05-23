@@ -14,6 +14,11 @@ interface IgChartProps {
   attributions: Record<string, number>;
 }
 
+function asNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const IgChart: React.FC<IgChartProps> = ({ attributions }) => {
   const chartData = Object.entries(attributions)
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
@@ -50,7 +55,10 @@ const IgChart: React.FC<IgChartProps> = ({ attributions }) => {
               tickLine={false}
             />
             <Tooltip
-              formatter={(value: number) => [value.toFixed(4), 'IG 歸因值']}
+              formatter={(value: unknown) => {
+                const safeValue = asNumber(value);
+                return [safeValue.toFixed(4), 'IG 歸因值'];
+              }}
               contentStyle={{
                 borderRadius: '8px',
                 border: '1px solid #e2e8f0',

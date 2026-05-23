@@ -20,14 +20,20 @@ interface ShapChartProps {
 }
 
 /** Format large numbers for compact display */
+function asNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function fmtVal(v: number): string {
-  const abs = Math.abs(v);
-  if (abs >= 1e12) return (v / 1e12).toFixed(1) + 'T';
-  if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B';
-  if (abs >= 1e6) return (v / 1e6).toFixed(1) + 'M';
-  if (abs >= 1e3) return (v / 1e3).toFixed(1) + 'K';
-  if (Number.isInteger(v)) return v.toString();
-  return v.toFixed(3);
+  const safe = asNumber(v);
+  const abs = Math.abs(safe);
+  if (abs >= 1e12) return (safe / 1e12).toFixed(1) + 'T';
+  if (abs >= 1e9) return (safe / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return (safe / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return (safe / 1e3).toFixed(1) + 'K';
+  if (Number.isInteger(safe)) return safe.toString();
+  return safe.toFixed(3);
 }
 
 const ShapChart: React.FC<ShapChartProps> = ({
@@ -102,10 +108,11 @@ const ShapChart: React.FC<ShapChartProps> = ({
               tickLine={false}
             />
             <Tooltip
-              formatter={(value: number, _name: string, props: { payload: { feature: string; rawValue: number } }) => {
+              formatter={(value: unknown, _name: string, props: { payload: { feature: string; rawValue: number } }) => {
+                const safeValue = asNumber(value);
                 const raw = props.payload.rawValue;
                 return [
-                  `SHAP: ${value >= 0 ? '+' : ''}${value.toFixed(4)}　原始值: ${raw !== undefined ? fmtVal(raw) : 'N/A'}`,
+                  `SHAP: ${safeValue >= 0 ? '+' : ''}${safeValue.toFixed(4)}　原始值: ${raw !== undefined ? fmtVal(raw) : 'N/A'}`,
                   props.payload.feature,
                 ];
               }}
@@ -120,7 +127,10 @@ const ShapChart: React.FC<ShapChartProps> = ({
               <LabelList
                 dataKey="value"
                 position="right"
-                formatter={(v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}`}
+                formatter={(v: unknown) => {
+                  const safeValue = asNumber(v);
+                  return `${safeValue >= 0 ? '+' : ''}${safeValue.toFixed(2)}`;
+                }}
                 style={{ fontSize: 11, fontWeight: 600 }}
                 fill="#64748b"
               />

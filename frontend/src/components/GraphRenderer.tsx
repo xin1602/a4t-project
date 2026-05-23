@@ -20,6 +20,11 @@ interface FGLink extends Omit<GraphEdge, 'source' | 'target'> {
 }
 interface FGGraphData { nodes: FGNode[]; links: FGLink[]; }
 
+function asNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const FEATURE_LABELS: Record<string, string> = {
   crypto_night_tx_ratio: '夜間交易比例',
   crypto_to_wallet_hhi: '轉出錢包集中度',
@@ -43,15 +48,16 @@ const GnnNodeMaskPanel: React.FC<{ items: GnnNodeImportance[] }> = ({ items }) =
       <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">GNNExplainer 關鍵特徵</p>
       <div className="space-y-1">
         {items.map((item, i) => {
-          const pct = Math.abs(item.importance) / maxAbs;
-          const pos = item.importance >= 0;
+          const importance = asNumber(item.importance);
+          const pct = Math.abs(importance) / maxAbs;
+          const pos = importance >= 0;
           return (
             <div key={i} className="flex items-center gap-1.5">
               <span className="w-20 truncate text-[9px] text-slate-600" title={item.feature}>{getFeatureLabel(item.feature)}</span>
               <div className="relative h-2.5 flex-1 rounded-full bg-surface-100">
                 <div className={`absolute top-0 h-2.5 rounded-full ${pos ? 'bg-red-400' : 'bg-indigo-400'}`} style={{ width: `${Math.max(pct * 100, 4)}%` }} />
               </div>
-              <span className={`w-10 text-right text-[9px] font-mono ${pos ? 'text-red-600' : 'text-indigo-600'}`}>{item.importance >= 0 ? '+' : ''}{item.importance.toFixed(3)}</span>
+              <span className={`w-10 text-right text-[9px] font-mono ${pos ? 'text-red-600' : 'text-indigo-600'}`}>{importance >= 0 ? '+' : ''}{importance.toFixed(3)}</span>
             </div>
           );
         })}
@@ -203,7 +209,7 @@ const GraphRenderer: React.FC<GraphRendererProps> = ({ rootUserId, hopDepth, onN
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ef4444';
-        ctx.fillText(mask.toFixed(2), mx, my - 2);
+        ctx.fillText(asNumber(mask).toFixed(2), mx, my - 2);
       }
     }
   }, []);

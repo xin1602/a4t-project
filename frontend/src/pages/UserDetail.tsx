@@ -24,6 +24,11 @@ const TAB_LABELS: Record<AttrTab, string> = {
   graphsage: 'GraphSAGE (GNNExplainer)',
 };
 
+function asNumber(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Feature name -> Chinese label
 const FEATURE_LABELS: Record<string, string> = {
   crypto_night_tx_ratio: '夜間交易比例',
@@ -118,9 +123,10 @@ const FeatureAttributionTabs: React.FC<FeatureAttributionTabsProps> = ({
               </p>
               <div className="space-y-2">
                 {gnnNodeMask.map(([name, val], i) => {
+                  const safeVal = asNumber(val);
                   const maxAbs = Math.max(...gnnNodeMask.map(([, v]) => Math.abs(v)), 1e-6);
-                  const pct = Math.abs(val) / maxAbs;
-                  const isPositive = val >= 0;
+                  const pct = Math.abs(safeVal) / maxAbs;
+                  const isPositive = safeVal >= 0;
                   const label = FEATURE_LABELS[name] ?? name;
                   return (
                     <div key={i} className="flex items-center gap-3">
@@ -138,7 +144,7 @@ const FeatureAttributionTabs: React.FC<FeatureAttributionTabsProps> = ({
                       <span className={`w-16 text-right text-xs font-mono ${
                         isPositive ? 'text-red-600' : 'text-indigo-600'
                       }`}>
-                        {val >= 0 ? '+' : ''}{val.toFixed(4)}
+                        {safeVal >= 0 ? '+' : ''}{safeVal.toFixed(4)}
                       </span>
                     </div>
                   );
