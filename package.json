@@ -1,0 +1,14 @@
+{
+  "name": "a4t-netlify-deploy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
+    "build": "npm run build:frontend",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.0.0",
+    "@netlify/functions": "^2.10.0"
+  }
+}

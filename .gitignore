@@ -41,4 +41,5 @@ deploy/
 docs
 
 # 腳本
-scripts/
+scripts/*
+!scripts/export_netlify_data.py
