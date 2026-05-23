@@ -8,7 +8,7 @@ async function readJsonAsset<T>(filename: string): Promise<T> {
     return cache.get(filename) as T;
   }
 
-  const url = new URL(`../_generated/${filename}`, import.meta.url);
+  const url = new URL(`./_generated/${filename}`, import.meta.url);
   const text = await readFile(fileURLToPath(url), "utf8");
   const parsed = JSON.parse(text) as T;
   cache.set(filename, parsed);
@@ -21,7 +21,7 @@ async function readJsonlIndex<T extends { user_id: string }>(filename: string): 
     return cache.get(cacheKey) as Map<string, T>;
   }
 
-  const url = new URL(`../_generated/${filename}`, import.meta.url);
+  const url = new URL(`./_generated/${filename}`, import.meta.url);
   const text = await readFile(fileURLToPath(url), "utf8");
   const index = new Map<string, T>();
   for (const line of text.split(/\r?\n/)) {

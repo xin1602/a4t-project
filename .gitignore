@@ -43,3 +43,6 @@ docs
 # 腳本
 scripts/*
 !scripts/export_netlify_data.py
+
+# Local Netlify folder
+.netlify

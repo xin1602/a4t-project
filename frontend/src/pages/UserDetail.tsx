@@ -7,6 +7,7 @@ import FeatureTable from '../components/FeatureTable';
 import HeatmapChart from '../components/HeatmapChart';
 import GraphRenderer from '../components/GraphRenderer';
 import LlmPanel from '../components/LlmPanel';
+import ErrorBoundary from '../components/ErrorBoundary';
 import type { UserDetail as UserDetailType } from '../types';
 
 const RISK_LEVEL_BADGE: Record<string, string> = {
@@ -261,6 +262,16 @@ const UserDetail: React.FC = () => {
       )}
 
       {data && (
+        <ErrorBoundary
+          fallback={
+            <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
+              <p className="font-medium">使用者詳情頁載入錯誤</p>
+              <p className="mt-2 text-xs text-red-500">
+                請回到總覽頁再試一次。
+              </p>
+            </div>
+          }
+        >
         <>
           {/* Data Source Label */}
           <div className={`mb-6 flex items-center gap-3 rounded-xl border px-5 py-4 text-sm font-medium ${
@@ -349,6 +360,7 @@ const UserDetail: React.FC = () => {
             }))}
           />
         </>
+        </ErrorBoundary>
       )}
     </div>
   );
