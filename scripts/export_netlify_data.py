@@ -55,30 +55,33 @@ def _load_jsonl_index(filename: str) -> Dict[str, dict]:
 
 def _select_representative_users(
     overview: dict,
-    gnn_user_ids: list[str],
-    model_service: Any,
+    graph: Any,
     limit: int = 5,
 ) -> list[str]:
     high_risk = overview.get("high_risk_list", [])
-    high_risk_ids = [str(row["user_id"]) for row in high_risk if "user_id" in row]
-    if gnn_user_ids:
-        scored = []
-        for uid in gnn_user_ids:
-            try:
-                scored.append((float(model_service.predict_single(uid).risk_score), uid))
-            except Exception:
-                scored.append((0.0, uid))
-        scored.sort(reverse=True)
-        selected = [uid for _, uid in scored[:limit]]
-        if len(selected) < limit:
-            for uid in high_risk_ids:
-                if uid not in selected:
-                    selected.append(uid)
-                if len(selected) >= limit:
-                    break
+    connected_high_risk: list[tuple[float, int, str]] = []
+    for row in high_risk:
+        uid = str(row.get("user_id", ""))
+        if not uid or uid not in graph:
+            continue
+        degree = int(graph.degree(uid))
+        if degree <= 0:
+            continue
+        connected_high_risk.append((float(row.get("risk_score", 0.0)), degree, uid))
+
+    connected_high_risk.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    selected = [uid for _, _, uid in connected_high_risk[:limit]]
+    if len(selected) >= limit:
         return selected[:limit]
 
-    return high_risk_ids[:limit]
+    for row in high_risk:
+        uid = str(row.get("user_id", ""))
+        if uid and uid not in selected:
+            selected.append(uid)
+        if len(selected) >= limit:
+            break
+
+    return selected[:limit]
 
 
 def _parse_hour(ts: str) -> int:
@@ -164,10 +167,12 @@ def main() -> None:
     case_service = CaseService.get_instance()
     explainer_service._ensure_loaded()
     raw_gnn = getattr(explainer_service, "_sage_data", None) or {}
-    gnn_user_ids = [str(u) for u in raw_gnn.get("gnn_explanations", {}).keys()]
 
     overview = _read_json(PROJECT_ROOT / "outputs" / "overview.json")
-    representative_user_ids = _select_representative_users(overview, gnn_user_ids, model_service, limit=5)
+    graph_service._ensure_graph()
+    graph = graph_service._G
+    assert graph is not None
+    representative_user_ids = _select_representative_users(overview, graph, limit=5)
     representative_set = set(representative_user_ids)
     feature_stats = _read_json(PROJECT_ROOT / "outputs" / "feature_stats.json")
     case_status_seed = _read_json(PROJECT_ROOT / "outputs" / "case_status.json")
@@ -243,9 +248,6 @@ def main() -> None:
         )
 
     # Build graph snapshots for each representative user and each hop.
-    graph_service._ensure_graph()
-    graph = graph_service._G
-    assert graph is not None
     representative_graphs: Dict[str, dict] = {}
     for user_id in representative_user_ids:
         user_summary = next(row for row in user_summaries if row["user_id"] == user_id)
